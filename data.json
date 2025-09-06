@@ -1,0 +1,26 @@
+[
+  {
+    "ID": 1,
+    "Nama": "Aruna Pramudita",
+    "Jabatan": "Kepala Divisi SDM",
+    "Pangkat": "Letnan",
+    "Foto": "https://i.pravatar.cc/600?img=12",
+    "Bio": "Memimpin pengembangan talenta dan kebijakan HR."
+  },
+  {
+    "ID": 2,
+    "Nama": "Dimas Rawindra",
+    "Jabatan": "Koordinator Rekrutmen",
+    "Pangkat": "Sersan",
+    "Foto": "https://i.pravatar.cc/600?img=15",
+    "Bio": "Mengelola rekrutmen dan employer branding."
+  },
+  {
+    "ID": 3,
+    "Nama": "Nayla Safitri",
+    "Jabatan": "Spesialis Pengembangan",
+    "Pangkat": "Kopral",
+    "Foto": "https://i.pravatar.cc/600?img=47",
+    "Bio": "Mendesain pelatihan dan jalur karier."
+  }
+]

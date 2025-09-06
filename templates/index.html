@@ -1,0 +1,63 @@
+{{ define "index.html" }}
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ .title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <header class="bg-white border-b sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/" class="font-bold text-lg">Last Paradise • SDM</a>
+      <nav class="flex gap-2 text-sm">
+        <a href="/" class="px-3 py-2 rounded hover:bg-gray-100">Beranda</a>
+        <a href="/list" class="px-3 py-2 rounded hover:bg-gray-100">Personel</a>
+        {{ if .authed }}
+        <a href="/logout" class="px-3 py-2 rounded hover:bg-gray-100">Logout</a>
+        {{ else }}
+        <a href="/login" class="px-3 py-2 rounded hover:bg-gray-100">Login</a>
+        {{ end }}
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 py-8">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Daftar Personel</h1>
+      {{ if .authed }}
+      <a href="/tambah" class="text-sm bg-green-600 text-white px-3 py-2 rounded">Tambah Personel</a>
+      {{ end }}
+    </div>
+
+    <div class="mt-6 grid sm:grid-cols-2 md:grid-cols-3 gap-6">
+      {{ range .personnel }}
+      <div class="bg-white rounded-lg shadow overflow-hidden">
+        {{ if .Foto }}
+        <img src="{{ .Foto }}" alt="Foto {{ .Nama }}" class="h-48 w-full object-cover">
+        {{ else }}
+        <div class="h-48 w-full bg-gray-200 flex items-center justify-center text-sm text-gray-500">Tidak ada foto</div>
+        {{ end }}
+        <div class="p-4">
+          <div class="font-semibold text-lg">{{ .Nama }}</div>
+          <div class="text-sm text-gray-600">{{ .Jabatan }} • {{ .Pangkat }}</div>
+          <p class="text-sm mt-2 text-gray-700">{{ if .Bio }}{{ .Bio }}{{ else }}—{{ end }}</p>
+          <div class="mt-4 flex gap-2">
+            {{ if $.authed }}
+            <a href="/edit?id={{ .ID }}" class="px-3 py-1 rounded border text-sm">Edit</a>
+            <a href="/delete?id={{ .ID }}" onclick="return confirm('Hapus personel ini?')" class="px-3 py-1 rounded border text-sm">Hapus</a>
+            {{ end }}
+          </div>
+        </div>
+      </div>
+      {{ end }}
+    </div>
+  </main>
+
+  <footer class="py-8 text-center text-sm text-gray-500 border-t mt-12">
+    © {{ .year }} Last Paradise — Divisi SDM
+  </footer>
+</body>
+</html>
+{{ end }}

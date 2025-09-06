@@ -1,0 +1,80 @@
+{{ define "index_home.html" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+    <header class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+            <a href="/" class="font-bold text-xl tracking-tight text-indigo-600">Last Paradise • SDM</a>
+            <nav class="flex items-center gap-4 text-sm font-medium">
+                <a href="/" class="text-gray-600 hover:text-indigo-600 transition-colors duration-200 py-2">Beranda</a>
+                <a href="/list" class="text-gray-600 hover:text-indigo-600 transition-colors duration-200 py-2">Personel</a>
+                <a href="/handbook" class="text-gray-600 hover:text-indigo-600 transition-colors duration-200 py-2">Handbook</a>
+                <a href="/login" class="text-indigo-600 hover:text-white bg-indigo-100 hover:bg-indigo-600 px-4 py-2 rounded-full transition-colors duration-200">Masuk</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="bg-indigo-600 text-white py-16 sm:py-24">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4">Portal Divisi SDM</h1>
+            <p class="text-indigo-200 text-lg sm:text-xl font-light leading-relaxed max-w-2xl mx-auto">
+                Kelola, kembangkan, dan hargai sumber daya manusia terbaik di Last Paradise.
+            </p>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 mb-12">
+        <div class="bg-white rounded-xl shadow-lg p-8 sm:p-10 mb-8">
+            <h2 class="text-2xl sm:text-3xl font-bold text-center mb-6 text-gray-800">Tentang Kami</h2>
+            <p class="text-gray-700 text-base sm:text-lg leading-relaxed text-center">
+                Divisi Sumber Daya Manusia Last Paradise bertanggung jawab penuh atas seluruh aspek pengelolaan personel, mulai dari **perekrutan dan orientasi**, **pendidikan dan pengembangan karier**, hingga **penilaian kinerja dan kesejahteraan** seluruh anggota tim. Kami berkomitmen untuk menciptakan lingkungan kerja yang positif, produktif, dan inklusif.
+            </p>
+        </div>
+
+        <div class="mb-8 overflow-hidden rounded-xl shadow-lg">
+            <img src="http://googleusercontent.com/image_generation_content/0" alt="Suasana kantor modern yang dinamis dengan tim berkolaborasi" class="w-full h-auto object-cover">
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-lg shadow p-6 text-center">
+                <div class="text-indigo-500 mb-3 text-4xl">
+                    <span role="img" aria-label="person-icon">👤</span>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Manajemen Personel</h3>
+                <p class="text-gray-600 text-sm">Akses data personel, riwayat karier, dan informasi kontak secara mudah.</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6 text-center">
+                <div class="text-indigo-500 mb-3 text-4xl">
+                    <span role="img" aria-label="book-icon">📚</span>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Panduan Karyawan</h3>
+                <p class="text-gray-600 text-sm">Lihat handbook dan dokumen penting lainnya untuk panduan kerja.</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6 text-center">
+                <div class="text-indigo-500 mb-3 text-4xl">
+                    <span role="img" aria-label="chart-icon">📈</span>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Penilaian Kinerja</h3>
+                <p class="text-gray-600 text-sm">Sistem evaluasi kinerja yang transparan dan terstruktur.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="py-6 text-center text-sm text-gray-500 border-t border-gray-200 bg-white">
+        © {{ .year }} Last Paradise — Divisi SDM
+    </footer>
+</body>
+</html>
+{{ end }}
