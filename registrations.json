@@ -1,0 +1,67 @@
+[
+  {
+    "id": 1,
+    "username": "",
+    "nama": "Rudi",
+    "pangkat": "Mayor Jendral",
+    "divisi": "SDM",
+    "q1": "ASW",
+    "q2": "ASW",
+    "q3": "ASW",
+    "q4": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa",
+    "status": "Pending",
+    "date": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "username": "",
+    "nama": "a",
+    "pangkat": "a",
+    "divisi": "a",
+    "q1": "a",
+    "q2": "a",
+    "q3": "a",
+    "q4": "A",
+    "status": "Pending",
+    "date": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": 3,
+    "username": "abas",
+    "nama": "a",
+    "pangkat": "a",
+    "divisi": "a",
+    "q1": "a",
+    "q2": "a",
+    "q3": "a",
+    "q4": "a",
+    "status": "pending",
+    "date": "2025-09-07T21:25:58.8637074+07:00"
+  },
+  {
+    "id": 4,
+    "username": "abas1",
+    "nama": "a",
+    "pangkat": "a",
+    "divisi": "a",
+    "q1": "a",
+    "q2": "a",
+    "q3": "a",
+    "q4": "a",
+    "status": "pending",
+    "date": "2025-09-07T21:32:56.5264486+07:00"
+  },
+  {
+    "id": 5,
+    "username": "abas2",
+    "nama": "a",
+    "pangkat": "a",
+    "divisi": "a",
+    "q1": "a",
+    "q2": "a",
+    "q3": "a",
+    "q4": "a",
+    "status": "pending",
+    "date": "2025-09-07T21:38:59.8546062+07:00"
+  }
+]

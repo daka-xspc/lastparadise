@@ -14,7 +14,10 @@
       <nav class="flex gap-2 text-sm">
         <a href="/" class="px-3 py-2 rounded hover:bg-gray-100">Beranda</a>
         <a href="/list" class="px-3 py-2 rounded hover:bg-gray-100">Personel</a>
+        <a href="/handbook" class="px-3 py-2 rounded hover:bg-gray-100">Handbook</a>
+        <a href="/status" class="px-3 py-2 rounded hover:bg-gray-100">Status</a>
         {{ if .authed }}
+        <a href="/admin/registrations" class="px-3 py-2 rounded hover:bg-gray-100">Admin Panel</a>
         <a href="/logout" class="px-3 py-2 rounded hover:bg-gray-100">Logout</a>
         {{ else }}
         <a href="/login" class="px-3 py-2 rounded hover:bg-gray-100">Login</a>

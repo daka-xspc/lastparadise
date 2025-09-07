@@ -1,0 +1,61 @@
+{{ define "apply.html" }}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ .title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <header class="bg-white border-b shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <a href="/" class="font-bold text-lg text-indigo-600">Last Paradise • SDM</a>
+      <a href="/logout" class="px-4 py-2 bg-red-500 text-white rounded">Logout</a>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto p-6 mt-6 bg-white rounded-lg shadow">
+    <h1 class="text-2xl font-bold mb-4">Formulir Pendaftaran SDM</h1>
+    <form method="POST" action="/apply" class="space-y-4">
+      <div>
+        <label class="block font-medium">Nama</label>
+        <input name="nama" class="w-full border px-3 py-2 rounded" required>
+      </div>
+      <div>
+        <label class="block font-medium">Pangkat</label>
+        <input name="pangkat" class="w-full border px-3 py-2 rounded" required>
+      </div>
+      <div>
+        <label class="block font-medium">Asal Divisi</label>
+        <input name="divisi" class="w-full border px-3 py-2 rounded" required>
+      </div>
+
+      <div>
+        <label class="block font-medium">1. Sudah berapa lama anda menjadi anggota LPPD?</label>
+        <textarea name="q1" class="w-full border px-3 py-2 rounded" required></textarea>
+      </div>
+      <div>
+        <label class="block font-medium">2. Situasi macam apa saja yang anda telah lalui?</label>
+        <textarea name="q2" class="w-full border px-3 py-2 rounded" required></textarea>
+      </div>
+      <div>
+        <label class="block font-medium">3. Apakah anda sudah paham isi dari handbook?</label>
+        <textarea name="q3" class="w-full border px-3 py-2 rounded" required></textarea>
+      </div>
+      <div>
+        <label class="block font-medium">4. Rencana apa yang telah anda siapkan ketika sudah berada di divisi SDM?</label>
+        <textarea name="q4" class="w-full border px-3 py-2 rounded" required></textarea>
+      </div>
+
+      <p class="text-sm text-gray-600">Tertanda, <span class="italic">[Pangkat][Nama]</span></p>
+
+      <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700">
+        Kirim Pendaftaran
+      </button>
+      <a href="/" class="ml-3 text-sm text-gray-600 underline">Kembali ke Beranda</a>
+    </form>
+  </main>
+</body>
+</html>
+{{ end }}

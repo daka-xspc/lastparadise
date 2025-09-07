@@ -4,35 +4,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{{ .title }}</title>
+  <title>Tambah Personel</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen bg-gray-50">
-  <header class="bg-white border-b">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="/" class="font-bold text-lg">Last Paradise • SDM</a>
-      <nav class="flex gap-2 text-sm"><a href="/list" class="px-3 py-2 rounded hover:bg-gray-100">Personel</a></nav>
-    </div>
-  </header>
-
-  <main class="max-w-3xl mx-auto px-4 py-8">
-    <h1 class="text-2xl font-bold">Tambah Personel</h1>
-    <form action="/insert" method="POST" class="mt-6 bg-white p-6 rounded-lg shadow space-y-4">
-      <input name="nama" placeholder="Nama lengkap" class="w-full border px-3 py-2 rounded" required>
-      <input name="jabatan" placeholder="Jabatan (contoh: Kepala Divisi)" class="w-full border px-3 py-2 rounded" required>
-      <input name="pangkat" placeholder="Pangkat (contoh: Letnan)" class="w-full border px-3 py-2 rounded" required>
-      <input name="foto" placeholder="URL Foto (https://...)" class="w-full border px-3 py-2 rounded">
-      <textarea name="bio" placeholder="Bio singkat" class="w-full border px-3 py-2 rounded" rows="4"></textarea>
-      <div class="flex gap-4">
-        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Simpan</button>
-        <a href="/list" class="px-4 py-2 rounded border">Batal</a>
-      </div>
-    </form>
-  </main>
-
-  <footer class="py-8 text-center text-sm text-gray-500 border-t mt-12">
-    © {{ .year }} Last Paradise — Divisi SDM
-  </footer>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+  <form method="POST" action="/insert" class="bg-white p-6 rounded shadow w-full max-w-md space-y-4">
+    <h1 class="text-xl font-bold mb-2">Tambah Personel</h1>
+    <input type="text" name="nama" placeholder="Nama" class="w-full border px-3 py-2 rounded" required>
+    <input type="text" name="jabatan" placeholder="Jabatan" class="w-full border px-3 py-2 rounded" required>
+    <input type="text" name="pangkat" placeholder="Pangkat" class="w-full border px-3 py-2 rounded" required>
+    <input type="url" name="foto" placeholder="URL Foto" class="w-full border px-3 py-2 rounded">
+    <textarea name="bio" placeholder="Bio singkat" class="w-full border px-3 py-2 rounded"></textarea>
+    <button class="bg-green-600 text-white px-4 py-2 rounded">Simpan</button>
+  </form>
 </body>
 </html>
 {{ end }}
