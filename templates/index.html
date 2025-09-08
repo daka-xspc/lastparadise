@@ -2,65 +2,78 @@
 <!doctype html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{{ .title }}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{ .title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Optional: Custom style for image placeholders */
+        .personnel-placeholder {
+            background-color: #e5e7eb;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+        }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-  <header class="bg-white border-b sticky top-0 z-30">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="/" class="font-bold text-lg">Last Paradise • SDM</a>
-      <nav class="flex gap-2 text-sm">
-        <a href="/" class="px-3 py-2 rounded hover:bg-gray-100">Beranda</a>
-        <a href="/list" class="px-3 py-2 rounded hover:bg-gray-100">Personel</a>
-        <a href="/handbook" class="px-3 py-2 rounded hover:bg-gray-100">Handbook</a>
-        <a href="/status" class="px-3 py-2 rounded hover:bg-gray-100">Status</a>
-        {{ if .authed }}
-        <a href="/admin/registrations" class="px-3 py-2 rounded hover:bg-gray-100">Admin Panel</a>
-        <a href="/logout" class="px-3 py-2 rounded hover:bg-gray-100">Logout</a>
-        {{ else }}
-        <a href="/login" class="px-3 py-2 rounded hover:bg-gray-100">Login</a>
-        {{ end }}
-      </nav>
-    </div>
-  </header>
-
-  <main class="max-w-6xl mx-auto px-6 py-8">
-    <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">Daftar Personel</h1>
-      {{ if .authed }}
-      <a href="/tambah" class="text-sm bg-green-600 text-white px-3 py-2 rounded">Tambah Personel</a>
-      {{ end }}
-    </div>
-
-    <div class="mt-6 grid sm:grid-cols-2 md:grid-cols-3 gap-6">
-      {{ range .personnel }}
-      <div class="bg-white rounded-lg shadow overflow-hidden">
-        {{ if .Foto }}
-        <img src="{{ .Foto }}" alt="Foto {{ .Nama }}" class="h-48 w-full object-cover">
-        {{ else }}
-        <div class="h-48 w-full bg-gray-200 flex items-center justify-center text-sm text-gray-500">Tidak ada foto</div>
-        {{ end }}
-        <div class="p-4">
-          <div class="font-semibold text-lg">{{ .Nama }}</div>
-          <div class="text-sm text-gray-600">{{ .Jabatan }} • {{ .Pangkat }}</div>
-          <p class="text-sm mt-2 text-gray-700">{{ if .Bio }}{{ .Bio }}{{ else }}—{{ end }}</p>
-          <div class="mt-4 flex gap-2">
-            {{ if $.authed }}
-            <a href="/edit?id={{ .ID }}" class="px-3 py-1 rounded border text-sm">Edit</a>
-            <a href="/delete?id={{ .ID }}" onclick="return confirm('Hapus personel ini?')" class="px-3 py-1 rounded border text-sm">Hapus</a>
-            {{ end }}
-          </div>
+<body class="bg-gray-50 min-h-screen font-sans">
+    <header class="bg-white border-b sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/" class="font-bold text-lg text-gray-800">Last Paradise • SDM</a>
+            <nav class="flex gap-2 text-sm">
+                <a href="/" class="px-3 py-2 rounded text-gray-700 hover:bg-gray-100 transition-colors">Beranda</a>
+                <a href="/list" class="px-3 py-2 rounded text-gray-700 hover:bg-gray-100 transition-colors">Personel</a>
+                {{ if .authed }}
+                <a href="/logout" class="px-3 py-2 rounded text-gray-700 hover:bg-gray-100 transition-colors">Logout</a>
+                {{ else }}
+                <a href="/login" class="px-3 py-2 rounded text-gray-700 hover:bg-gray-100 transition-colors">Login</a>
+                {{ end }}
+            </nav>
         </div>
-      </div>
-      {{ end }}
-    </div>
-  </main>
+    </header>
 
-  <footer class="py-8 text-center text-sm text-gray-500 border-t mt-12">
-    © {{ .year }} Last Paradise — Divisi SDM
-  </footer>
+    <main class="max-w-6xl mx-auto px-6 py-8">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Daftar Personel</h1>
+            {{ if .IsForumManagement }}
+                <a href="/admin/add-personnel" class="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow">Tambah Personel</a>
+            {{ end }}
+        </div>
+
+        <div class="mt-6 grid sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {{ if .personnel }}
+                {{ range .personnel }}
+                <div class="bg-white rounded-lg shadow overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                    {{ if .Foto }}
+                        <img src="{{ .Foto }}" alt="Foto {{ .Nama }}" class="h-48 w-full object-cover">
+                    {{ else }}
+                        <div class="h-48 w-full personnel-placeholder">Tidak ada foto</div>
+                    {{ end }}
+                    <div class="p-4">
+                        <div class="font-semibold text-lg text-gray-900">{{ .Nama }}</div>
+                        <div class="text-sm text-gray-600">{{ .Jabatan }} • {{ .Pangkat }}</div>
+                        <p class="text-sm mt-2 text-gray-700">{{ if .Bio }}{{ .Bio }}{{ else }}—{{ end }}</p>
+                        {{ if $.IsForumManagement }}
+                            <div class="mt-4 flex gap-2">
+                                <a href="/edit?id={{ .ID }}" class="px-3 py-1 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-100">Edit</a>
+                                <a href="/delete?id={{ .ID }}" onclick="return confirm('Hapus personel ini?')" class="px-3 py-1 rounded-lg border border-red-500 text-sm text-red-500 hover:bg-red-50">Hapus</a>
+                            </div>
+                        {{ end }}
+                    </div>
+                </div>
+                {{ end }}
+            {{ else }}
+                <p class="col-span-full text-center text-gray-500 py-12">Belum ada data personel.</p>
+            {{ end }}
+        </div>
+    </main>
+
+    <footer class="py-8 text-center text-sm text-gray-500 border-t mt-12">
+        © {{ .year }} Last Paradise — Divisi SDM
+    </footer>
 </body>
 </html>
 {{ end }}

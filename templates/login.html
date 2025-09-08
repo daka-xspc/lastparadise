@@ -15,19 +15,15 @@
     <div class="bg-red-100 text-red-700 px-3 py-2 rounded mb-4">{{ .error }}</div>
     {{ end }}
 
-    {{ if eq .title "Pilih Login" }}
-    <div class="flex flex-col gap-3">
-      <a href="/login/admin" class="bg-indigo-600 text-white px-4 py-2 rounded text-center">Login Admin</a>
-      <a href="/login/user" class="bg-green-600 text-white px-4 py-2 rounded text-center">Login User</a>
-      <a href="/register" class="bg-gray-200 px-4 py-2 rounded text-center">Buat Akun</a>
-    </div>
-    {{ else }}
-    <form method="POST" action="" class="space-y-4">
+    <form method="POST" action="/login" class="space-y-4">
       <input type="text" name="username" placeholder="Username" class="w-full border px-3 py-2 rounded" required>
       <input type="password" name="password" placeholder="Password" class="w-full border px-3 py-2 rounded" required>
-      <button class="w-full bg-indigo-600 text-white px-4 py-2 rounded">Masuk</button>
+      <button class="w-full bg-indigo-600 text-white px-4 py-2 rounded">Login</button>
     </form>
-    {{ end }}
+    
+    <p class="text-sm text-center mt-4">
+      Belum punya akun? <a href="/register" class="text-indigo-600 hover:underline">Daftar sekarang</a>
+    </p>
   </div>
 </body>
 </html>

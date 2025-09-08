@@ -10,18 +10,35 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
 
-var salt = "lastparadise-sdm"
+var (
+	templates        = template.Must(template.ParseGlob("templates/*.html"))
+	salt             = "lastparadise-sdm"
+	personnelFile    = "data.json"
+	registrationFile = "registrations.json"
+	usersFile        = "users.json"
+	personnel        = []Personnel{}
+	registrations    = []Registration{}
+	users            = []User{}
+	lastRegID        int
+	lastID           = 0
+	muPersonnel      sync.Mutex
+	muRegistrations  sync.Mutex
+	muUsers          sync.Mutex
+	personnelList    = &listPersonnel{}
+)
 
-// Admin
-var adminUsername = "renoldadia"
-var adminPasswordHash = "cb2ada22fca9ff3f4e7a3ebc72eb90df08a47133db1ddd88c0ef31af9b60c132"
+// Define role hierarchy
+var roleHierarchy = map[string]int{
+	"user":             1,
+	"admin":            2,
+	"forum_management": 3,
+	"super_admin":      4,
+}
 
 // --- SESSION HANDLING ---
 var sessions = struct {
@@ -29,7 +46,7 @@ var sessions = struct {
 	m map[string]string
 }{m: make(map[string]string)}
 
-var userSessions = struct {
+var sessionRoles = struct {
 	sync.RWMutex
 	m map[string]string
 }{m: make(map[string]string)}
@@ -38,7 +55,7 @@ var userSessions = struct {
 type User struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
-	Role     string `json:"role"` // user atau admin
+	Role     string `json:"role"` // user, admin, forum_management, super_admin
 }
 
 type Registration struct {
@@ -51,7 +68,7 @@ type Registration struct {
 	Q2       string    `json:"q2"`
 	Q3       string    `json:"q3"`
 	Q4       string    `json:"q4"`
-	Status   string    `json:"status"` // pending, denied, accept
+	Status   string    `json:"status"`
 	Date     time.Time `json:"date"`
 }
 
@@ -74,271 +91,326 @@ type listPersonnel struct {
 	sync.RWMutex
 }
 
-// --- GLOBAL ---
-var (
-	personnelList    = &listPersonnel{}
-	templates        *template.Template
-	personnelFile    = "personnel.json"
-	usersFile        = "users.json"
-	registrationFile = "registrations.json"
-	lastID           = 0
-	lastRegID        = 0
-	users            = []User{}
-	registrations    = []Registration{}
-)
-
-func main() {
-	loadTemplates()
+// --- FILE IO ---
+func loadData() {
 	loadPersonnel()
-	loadUsers()
 	loadRegistrations()
-
-	// Routes
-	http.HandleFunc("/", homeHandler)
-	http.HandleFunc("/list", listHandler)
-	http.HandleFunc("/login", loginChoiceHandler)
-	http.HandleFunc("/login/admin", loginAdminHandler)
-	http.HandleFunc("/login/user", loginUserHandler)
-	http.HandleFunc("/logout", logoutHandler)
-	http.HandleFunc("/register", registerHandler)
-	http.HandleFunc("/status", requireUser(statusHandler))
-	http.HandleFunc("/handbook", handbookHandler)
-	http.HandleFunc("/apply", requireUser(applyHandler))
-
-	// Admin only
-	http.HandleFunc("/admin/registrations", requireAdmin(adminRegistrationsHandler))
-	http.HandleFunc("/admin/registrations/update", requireAdmin(updateRegistrationStatusHandler))
-	http.HandleFunc("/admin/pending", requireAdmin(pendingHandler))
-	http.HandleFunc("/registrations", registrationsHandler)
-
-	// Personnel CRUD (admin only)
-	http.HandleFunc("/tambah", requireAdmin(addFormHandler))
-	http.HandleFunc("/insert", requireAdmin(insertHandler))
-	http.HandleFunc("/edit", requireAdmin(editFormHandler))
-	http.HandleFunc("/update", requireAdmin(updateHandler))
-	http.HandleFunc("/delete", requireAdmin(deleteHandler))
-
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-
-	addr := ":8080"
-	fmt.Printf("Server berjalan di http://localhost%s\n", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+	loadUsers()
 }
 
-// =================== TEMPLATE ===================
-func loadTemplates() {
-	pattern := filepath.Join("templates", "*.html")
-	var err error
-	templates, err = template.ParseGlob(pattern)
-	if err != nil {
-		log.Fatalf("failed parsing templates: %v", err)
-	}
+func savePersonnel() {
+	b, _ := json.MarshalIndent(personnel, "", "  ")
+	os.WriteFile(personnelFile, b, 0644)
 }
 
-func registrationsHandler(w http.ResponseWriter, r *http.Request) {
-	// Pastikan hanya admin yang bisa mengakses halaman ini
-	if !isAdmin(r) {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+func loadPersonnel() {
+	muPersonnel.Lock()
+	defer muPersonnel.Unlock()
+	if _, err := os.Stat(personnelFile); os.IsNotExist(err) {
 		return
 	}
-
-	loadRegistrations()
-	data := map[string]interface{}{
-		"title":         "Daftar Pendaftar",
-		"registrations": registrations,
-	}
-	render(w, "registrations.html", data)
-}
-
-func pendingHandler(w http.ResponseWriter, r *http.Request) {
-	// Memuat data pendaftaran
-	loadRegistrations()
-
-	data := map[string]interface{}{
-		"title":         "Daftar Anggota Pending",
-		"registrations": registrations,
-	}
-	render(w, "pending.html", data)
-}
-
-func render(w http.ResponseWriter, name string, data any) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := templates.ExecuteTemplate(w, name, data); err != nil {
-		log.Printf("render error: %v", err)
-		http.Error(w, "Template error", http.StatusInternalServerError)
+	b, _ := os.ReadFile(personnelFile)
+	json.Unmarshal(b, &personnel)
+	for _, p := range personnel {
+		if p.ID > lastID {
+			lastID = p.ID
+		}
 	}
 }
 
-// =================== PASSWORD ===================
+func saveUsers() {
+	b, _ := json.MarshalIndent(users, "", "  ")
+	os.WriteFile(usersFile, b, 0644)
+}
+
+func loadUsers() {
+	muUsers.Lock()
+	defer muUsers.Unlock()
+	if _, err := os.Stat(usersFile); os.IsNotExist(err) {
+		return
+	}
+	b, _ := os.ReadFile(usersFile)
+	json.Unmarshal(b, &users)
+}
+
+func saveRegistrations() {
+	b, _ := json.MarshalIndent(registrations, "", "  ")
+	os.WriteFile(registrationFile, b, 0644)
+}
+
+func loadRegistrations() {
+	muRegistrations.Lock()
+	defer muRegistrations.Unlock()
+	if _, err := os.Stat(registrationFile); os.IsNotExist(err) {
+		return
+	}
+	b, _ := os.ReadFile(registrationFile)
+	json.Unmarshal(b, &registrations)
+	for _, r := range registrations {
+		if r.ID > lastRegID {
+			lastRegID = r.ID
+		}
+	}
+}
+
+func appendUserToFile(user User) error {
+	muUsers.Lock()
+	defer muUsers.Unlock()
+
+	var existingUsers []User
+	file, err := os.Open(usersFile)
+	if err == nil {
+		defer file.Close()
+		decoder := json.NewDecoder(file)
+		if err := decoder.Decode(&existingUsers); err != nil && err.Error() != "EOF" {
+			return fmt.Errorf("failed to decode users file: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to open users file: %w", err)
+	}
+
+	existingUsers = append(existingUsers, user)
+
+	b, err := json.MarshalIndent(existingUsers, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal users: %w", err)
+	}
+	return os.WriteFile(usersFile, b, 0644)
+}
+
+// --- TEMPLATE & AUTH ---
+func render(w http.ResponseWriter, tmpl string, data interface{}) {
+	templates.ExecuteTemplate(w, tmpl, data)
+}
+
+func getSessionInfo(r *http.Request) (string, string) {
+	c, err := r.Cookie("session_token")
+	if err != nil {
+		return "", ""
+	}
+	sessions.RLock()
+	username, ok := sessions.m[c.Value]
+	sessions.RUnlock()
+	if !ok {
+		return "", ""
+	}
+	sessionRoles.RLock()
+	role, ok := sessionRoles.m[username]
+	sessionRoles.RUnlock()
+	if !ok {
+		return username, "user"
+	}
+	return username, role
+}
+
+func checkAuth(w http.ResponseWriter, r *http.Request, requiredRole string) bool {
+	c, err := r.Cookie("session_token")
+	if err != nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return false
+	}
+	sessions.RLock()
+	username, ok := sessions.m[c.Value]
+	sessions.RUnlock()
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return false
+	}
+
+	sessionRoles.RLock()
+	userRole, ok := sessionRoles.m[username]
+	sessionRoles.RUnlock()
+	if !ok {
+		userRole = "user"
+	}
+
+	requiredRank, ok := roleHierarchy[requiredRole]
+	if !ok {
+		http.Error(w, "Invalid role configuration", http.StatusInternalServerError)
+		return false
+	}
+	userRank, ok := roleHierarchy[userRole]
+	if !ok {
+		http.Error(w, "Invalid user role", http.StatusInternalServerError)
+		return false
+	}
+
+	if userRank < requiredRank {
+		http.Error(w, "Access Denied", http.StatusForbidden)
+		return false
+	}
+	return true
+}
+
+// --- UTILS ---
 func hashPassword(password string) string {
 	h := sha256.Sum256([]byte(salt + password))
 	return hex.EncodeToString(h[:])
 }
 
-// =================== AUTH ===================
-func createToken() string {
+func createSessionToken() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
 	return hex.EncodeToString(b)
 }
 
-func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if !isAdmin(r) {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-		next(w, r)
-	}
-}
-
-func requireUser(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, ok := isUser(r) // hanya pakai bool
-		if !ok {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-		next(w, r)
-	}
-}
-
-func isAdmin(r *http.Request) bool {
-	c, err := r.Cookie("admin_token")
-	if err != nil {
-		return false
-	}
-	sessions.RLock()
-	_, ok := sessions.m[c.Value]
-	sessions.RUnlock()
-	return ok
-}
-
-func isUser(r *http.Request) (string, bool) {
-	c, err := r.Cookie("user_token")
-	if err != nil {
-		return "", false
-	}
-	userSessions.RLock()
-	username, ok := userSessions.m[c.Value]
-	userSessions.RUnlock()
-	return username, ok
-}
-
-// =================== HANDLERS ===================
+// --- HANDLERS ---
+// Diganti dengan versi yang sudah diperbarui dan benar
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	username, userLogged := isUser(r)
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+
+	username, role := getSessionInfo(r)
+
 	data := map[string]interface{}{
-		"title":       "Divisi SDM • Last Paradise",
-		"year":        time.Now().Year(),
+		"title":       "Portal Divisi SDM",
 		"user":        username,
-		"userLogged":  userLogged,
-		"adminLogged": isAdmin(r),
+		"role":        role,
+		"userLogged":  username != "",
+		"adminLogged": roleHierarchy[role] >= roleHierarchy["admin"],
+		"year":        time.Now().Year(),
 	}
 	render(w, "index_home.html", data)
 }
 
-func handbookHandler(w http.ResponseWriter, r *http.Request) {
+func listHandler(w http.ResponseWriter, r *http.Request) {
+	_, role := getSessionInfo(r)
 	data := map[string]interface{}{
-		"title": "Handbook SDM - Last Paradise",
-		"year":  time.Now().Year(),
+		"title":     "Daftar Personel",
+		"personnel": readAll(),
+		"authed":    role != "",
 	}
-	render(w, "handbook.html", data)
+	render(w, "index.html", data)
 }
 
-// ------------------- ADMIN LOGIN -------------------
-func loginChoiceHandler(w http.ResponseWriter, r *http.Request) {
-	data := map[string]interface{}{
-		"title": "Pilih Login",
-		"year":  time.Now().Year(),
-	}
-	render(w, "login.html", data)
-}
-
-func loginAdminHandler(w http.ResponseWriter, r *http.Request) {
+func loginHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		render(w, "login.html", map[string]interface{}{
-			"title": "Login Admin",
-			"year":  time.Now().Year(),
-		})
+		data := map[string]interface{}{"title": "Login"}
+		render(w, "login.html", data)
 	case http.MethodPost:
-		r.ParseForm()
-		username := strings.TrimSpace(r.FormValue("username"))
+		username := r.FormValue("username")
 		password := r.FormValue("password")
 
-		if username != adminUsername || hashPassword(password) != adminPasswordHash {
-			render(w, "login.html", map[string]interface{}{"error": "Username/password salah"})
+		var userRole string
+		found := false
+		muUsers.Lock()
+		for _, u := range users {
+			if u.Username == username && u.Password == hashPassword(password) {
+				userRole = u.Role
+				found = true
+				break
+			}
+		}
+		muUsers.Unlock()
+
+		if !found {
+			data := map[string]interface{}{
+				"title": "Login",
+				"error": "Username atau password salah",
+			}
+			render(w, "login.html", data)
 			return
 		}
-		token := createToken()
+
+		token := createSessionToken()
 		sessions.Lock()
 		sessions.m[token] = username
 		sessions.Unlock()
-		http.SetCookie(w, &http.Cookie{Name: "admin_token", Value: token, Path: "/", HttpOnly: true})
+		sessionRoles.Lock()
+		sessionRoles.m[username] = userRole
+		sessionRoles.Unlock()
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_token",
+			Value:    token,
+			Path:     "/",
+			HttpOnly: true,
+			MaxAge:   3600,
+		})
+
 		http.Redirect(w, r, "/list", http.StatusSeeOther)
 	}
 }
 
-// ------------------- USER LOGIN -------------------
-func loginUserHandler(w http.ResponseWriter, r *http.Request) {
+func registerHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		render(w, "login.html", map[string]interface{}{"title": "Login User"})
+		data := map[string]interface{}{"title": "Daftar Akun"}
+		render(w, "register.html", data)
 	case http.MethodPost:
-		r.ParseForm()
 		username := r.FormValue("username")
-		password := hashPassword(r.FormValue("password"))
+		password := r.FormValue("password")
 
+		muUsers.Lock()
 		for _, u := range users {
-			if u.Username == username && u.Password == password {
-				token := createToken()
-				userSessions.Lock()
-				userSessions.m[token] = username
-				userSessions.Unlock()
-				http.SetCookie(w, &http.Cookie{Name: "user_token", Value: token, Path: "/", HttpOnly: true})
-				http.Redirect(w, r, "/status", http.StatusSeeOther)
+			if u.Username == username {
+				muUsers.Unlock()
+				data := map[string]interface{}{
+					"title": "Daftar Akun",
+					"error": "Username sudah ada",
+				}
+				render(w, "register.html", data)
 				return
 			}
 		}
-		render(w, "login.html", map[string]interface{}{"error": "User tidak ditemukan"})
+
+		newUser := User{Username: username, Password: hashPassword(password), Role: "user"}
+		users = append(users, newUser)
+		saveUsers()
+		muUsers.Unlock()
+
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 	}
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{Name: "admin_token", Value: "", MaxAge: -1, Path: "/"})
-	http.SetCookie(w, &http.Cookie{Name: "user_token", Value: "", MaxAge: -1, Path: "/"})
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-// ------------------- USER REGISTER -------------------
-func registerHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		render(w, "register.html", map[string]interface{}{"title": "Daftar Akun"})
-	case http.MethodPost:
-		r.ParseForm()
-		username := r.FormValue("username")
-		password := hashPassword(r.FormValue("password"))
-
-		for _, u := range users {
-			if u.Username == username {
-				render(w, "register.html", map[string]interface{}{"error": "Username sudah ada"})
-				return
-			}
-		}
-
-		newUser := User{Username: username, Password: password, Role: "user"}
-		users = append(users, newUser)
-		saveUsers()
-
-		http.Redirect(w, r, "/login/user", http.StatusSeeOther)
+	c, err := r.Cookie("session_token")
+	if err == nil {
+		token := c.Value
+		sessions.Lock()
+		delete(sessions.m, token)
+		sessions.Unlock()
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_token",
+			Value:    "",
+			Path:     "/",
+			HttpOnly: true,
+			MaxAge:   -1,
+		})
 	}
+	http.Redirect(w, r, "/list", http.StatusSeeOther)
 }
 
-// ------------------- USER STATUS -------------------
+func registrationsHandler(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(w, r, "admin") {
+		return
+	}
+	_, role := getSessionInfo(r)
+
+	data := map[string]interface{}{
+		"title":             "Admin Panel - Registrasi",
+		"registrations":     registrations,
+		"IsAdmin":           roleHierarchy[role] >= roleHierarchy["admin"],
+		"IsForumManagement": roleHierarchy[role] >= roleHierarchy["forum_management"],
+		"IsSuperAdmin":      roleHierarchy[role] >= roleHierarchy["super_admin"],
+	}
+	render(w, "registrations.html", data)
+}
+
 func statusHandler(w http.ResponseWriter, r *http.Request) {
-	username, _ := isUser(r)
+	username, _ := getSessionInfo(r)
+	if username == "" {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	muRegistrations.Lock()
+	defer muRegistrations.Unlock()
+
 	userRegs := []Registration{}
 	for _, reg := range registrations {
 		if reg.Username == username {
@@ -348,89 +420,171 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"title": "Status Pendaftaran",
 		"regs":  userRegs,
-		"year":  time.Now().Year(),
 	}
 	render(w, "status.html", data)
 }
 
-// ------------------- ADMIN REGISTRATIONS -------------------
-func adminRegistrationsHandler(w http.ResponseWriter, r *http.Request) {
-	data := map[string]interface{}{
-		"title": "Admin - Pendaftaran",
-		"regs":  registrations,
+func setStatusHandler(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(w, r, "admin") {
+		return
 	}
-	render(w, "registrations.html", data)
-}
-
-func updateRegistrationStatusHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	id, _ := strconv.Atoi(r.FormValue("id"))
 	status := r.FormValue("status")
 
+	muRegistrations.Lock()
+	defer muRegistrations.Unlock()
 	for i, reg := range registrations {
 		if reg.ID == id {
 			registrations[i].Status = status
-			break
+			saveRegistrations()
+			http.Redirect(w, r, "/admin/registrations", http.StatusSeeOther)
+			return
 		}
 	}
-	saveRegistrations()
-	http.Redirect(w, r, "/admin/registrations", http.StatusSeeOther)
+	http.NotFound(w, r)
 }
 
-// ================ PERSONNEL CRUD ================
-func listHandler(w http.ResponseWriter, r *http.Request) {
-	data := map[string]interface{}{
-		"title":     "Daftar Personel",
-		"personnel": readAll(),
-		"year":      time.Now().Year(),
-		"authed":    isAdmin(r),
-	}
-	render(w, "index.html", data)
-}
-
-func addFormHandler(w http.ResponseWriter, r *http.Request) {
-	data := map[string]interface{}{"title": "Tambah Personel"}
-	render(w, "form.html", data)
-}
-
-func insertHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	p := Personnel{ID: generateID(), Nama: r.FormValue("nama"), Jabatan: r.FormValue("jabatan"),
-		Pangkat: r.FormValue("pangkat"), Foto: r.FormValue("foto"), Bio: r.FormValue("bio")}
-	insert(p)
-	savePersonnel()
-	http.Redirect(w, r, "/list", http.StatusSeeOther)
-}
-
-func editFormHandler(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
-	p, ok := getByID(id)
-	if !ok {
-		http.NotFound(w, r)
+func deleteRegistrationHandler(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(w, r, "forum_management") {
 		return
 	}
-	data := map[string]interface{}{"title": "Edit Personel", "p": p}
-	render(w, "edit.html", data)
-}
-
-func updateHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	id, _ := strconv.Atoi(r.FormValue("id"))
-	p := Personnel{ID: id, Nama: r.FormValue("nama"), Jabatan: r.FormValue("jabatan"),
-		Pangkat: r.FormValue("pangkat"), Foto: r.FormValue("foto"), Bio: r.FormValue("bio")}
-	update(p)
-	savePersonnel()
-	http.Redirect(w, r, "/list", http.StatusSeeOther)
+
+	muRegistrations.Lock()
+	defer muRegistrations.Unlock()
+	for i, reg := range registrations {
+		if reg.ID == id {
+			registrations = append(registrations[:i], registrations[i+1:]...)
+			saveRegistrations()
+			http.Redirect(w, r, "/admin/registrations", http.StatusSeeOther)
+			return
+		}
+	}
+	http.NotFound(w, r)
 }
 
-func deleteHandler(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
-	deleteByID(id)
-	savePersonnel()
-	http.Redirect(w, r, "/list", http.StatusSeeOther)
+func userManagementHandler(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(w, r, "forum_management") {
+		return
+	}
+	_, role := getSessionInfo(r)
+
+	data := map[string]interface{}{
+		"title":             "Manajemen Pengguna",
+		"users":             users,
+		"IsForumManagement": roleHierarchy[role] >= roleHierarchy["forum_management"],
+		"IsSuperAdmin":      roleHierarchy[role] >= roleHierarchy["super_admin"],
+	}
+	render(w, "user_management.html", data)
 }
 
-// ================ PERSONNEL LIST ================
+func setUserRoleHandler(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(w, r, "super_admin") {
+		return
+	}
+	r.ParseForm()
+	username := r.FormValue("username")
+	newRole := r.FormValue("role")
+
+	muUsers.Lock()
+	defer muUsers.Unlock()
+	for i, u := range users {
+		if u.Username == username {
+			users[i].Role = newRole
+			saveUsers()
+			http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+			return
+		}
+	}
+	http.NotFound(w, r)
+}
+
+func applyHandler(w http.ResponseWriter, r *http.Request) {
+	username, _ := getSessionInfo(r)
+	if username == "" {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	muRegistrations.Lock()
+	defer muRegistrations.Unlock()
+	for _, reg := range registrations {
+		if reg.Username == username {
+			data := map[string]interface{}{"title": "Pendaftaran SDM", "error": "Pendaftaran Anda sudah ada. Silakan periksa status Anda."}
+			render(w, "apply.html", data)
+			return
+		}
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		data := map[string]interface{}{
+			"title": "Pendaftaran SDM",
+		}
+		render(w, "apply.html", data)
+	case http.MethodPost:
+		r.ParseForm()
+		nama := r.FormValue("nama")
+		pangkat := r.FormValue("pangkat")
+		divisi := r.FormValue("divisi")
+		q1 := r.FormValue("q1")
+		q2 := r.FormValue("q2")
+		q3 := r.FormValue("q3")
+		q4 := r.FormValue("q4")
+
+		lastRegID++
+		newReg := Registration{
+			ID:       lastRegID,
+			Username: username,
+			Nama:     nama,
+			Pangkat:  pangkat,
+			Divisi:   divisi,
+			Q1:       q1,
+			Q2:       q2,
+			Q3:       q3,
+			Q4:       q4,
+			Status:   "pending",
+			Date:     time.Now(),
+		}
+		registrations = append(registrations, newReg)
+		saveRegistrations()
+
+		data := map[string]interface{}{
+			"title":   "Pendaftaran SDM",
+			"success": "Pendaftaran Anda berhasil. Silakan tunggu konfirmasi dari Admin.",
+		}
+		render(w, "apply.html", data)
+	}
+}
+
+func main() {
+	loadData()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", homeHandler) // homeHandler sekarang adalah homeIndexHandler yang sudah diperbaiki
+	mux.HandleFunc("/list", listHandler)
+	mux.HandleFunc("/login", loginHandler)
+	mux.HandleFunc("/register", registerHandler)
+	mux.HandleFunc("/logout", logoutHandler)
+	mux.HandleFunc("/apply", applyHandler)
+	mux.HandleFunc("/status", statusHandler)
+	mux.HandleFunc("/admin/registrations", registrationsHandler)
+	mux.HandleFunc("/admin/setstatus", setStatusHandler)
+	mux.HandleFunc("/admin/delete", deleteRegistrationHandler)
+	mux.HandleFunc("/admin/users", userManagementHandler)
+	mux.HandleFunc("/admin/setrole", setUserRoleHandler)
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	mux.HandleFunc("/handbook", func(w http.ResponseWriter, r *http.Request) {
+		data := map[string]interface{}{"title": "Handbook SDM", "content": "Konten handbook akan diletakkan di sini."}
+		render(w, "handbook.html", data)
+	})
+	log.Println("Server berjalan di http://localhost:8080")
+	http.ListenAndServe(":8080", mux)
+}
+
+// Fungsi-fungsi lain (generateID, insert, readAll, getByID, update, deleteByID, saveData)
 func generateID() int { lastID++; return lastID }
 
 func insert(p Personnel) {
@@ -510,97 +664,32 @@ func deleteByID(id int) bool {
 	return false
 }
 
-// ================== FILE IO ==================
-func savePersonnel() {
+func saveData() error {
 	data := readAll()
-	b, _ := json.MarshalIndent(data, "", "  ")
-	os.WriteFile(personnelFile, b, 0644)
+	b, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(personnelFile, b, 0644)
 }
 
-func loadPersonnel() {
+func loadPersonnelData() error {
 	if _, err := os.Stat(personnelFile); os.IsNotExist(err) {
-		return
+		return nil
 	}
-	b, _ := os.ReadFile(personnelFile)
+	b, err := os.ReadFile(personnelFile)
+	if err != nil {
+		return err
+	}
 	var arr []Personnel
-	json.Unmarshal(b, &arr)
+	if err := json.Unmarshal(b, &arr); err != nil {
+		return err
+	}
 	for _, p := range arr {
 		insert(p)
 		if p.ID > lastID {
 			lastID = p.ID
 		}
 	}
-}
-
-func saveUsers() {
-	b, _ := json.MarshalIndent(users, "", "  ")
-	os.WriteFile(usersFile, b, 0644)
-}
-
-func loadUsers() {
-	if _, err := os.Stat(usersFile); os.IsNotExist(err) {
-		return
-	}
-	b, _ := os.ReadFile(usersFile)
-	json.Unmarshal(b, &users)
-}
-
-func saveRegistrations() {
-	b, _ := json.MarshalIndent(registrations, "", "  ")
-	os.WriteFile(registrationFile, b, 0644)
-}
-
-func loadRegistrations() {
-	if _, err := os.Stat(registrationFile); os.IsNotExist(err) {
-		return
-	}
-	b, _ := os.ReadFile(registrationFile)
-	json.Unmarshal(b, &registrations)
-	for _, r := range registrations {
-		if r.ID > lastRegID {
-			lastRegID = r.ID
-		}
-	}
-}
-
-func applyHandler(w http.ResponseWriter, r *http.Request) {
-	username, _ := isUser(r)
-
-	switch r.Method {
-	case http.MethodGet:
-		data := map[string]interface{}{
-			"title": "Pendaftaran SDM",
-			"year":  time.Now().Year(),
-		}
-		render(w, "apply.html", data)
-
-	case http.MethodPost:
-		r.ParseForm()
-		nama := r.FormValue("nama")
-		pangkat := r.FormValue("pangkat")
-		divisi := r.FormValue("divisi")
-		q1 := r.FormValue("q1")
-		q2 := r.FormValue("q2")
-		q3 := r.FormValue("q3")
-		q4 := r.FormValue("q4")
-
-		lastRegID++
-		reg := Registration{
-			ID:       lastRegID,
-			Username: username,
-			Nama:     nama,
-			Pangkat:  pangkat,
-			Divisi:   divisi,
-			Q1:       q1,
-			Q2:       q2,
-			Q3:       q3,
-			Q4:       q4,
-			Status:   "pending",
-			Date:     time.Now(),
-		}
-		registrations = append(registrations, reg)
-		saveRegistrations()
-
-		http.Redirect(w, r, "/status", http.StatusSeeOther)
-	}
+	return nil
 }

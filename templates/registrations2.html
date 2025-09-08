@@ -22,14 +22,14 @@
       {{ range .registrations }}
       <div class="bg-white p-4 rounded shadow">
         <div class="font-semibold">{{ .Nama }} • {{ .Pangkat }}</div>
-        <div class="text-sm text-gray-600">Asal Divisi: {{ .AsalDivisi }}</div>
+        <div class="text-sm text-gray-600">Asal Divisi: {{ .Divisi }}</div>
         <div class="mt-2 text-sm">
           <p><strong>Q1:</strong> {{ .Q1 }}</p>
           <p><strong>Q2:</strong> {{ .Q2 }}</p>
           <p><strong>Q3:</strong> {{ .Q3 }}</p>
           <p><strong>Q4:</strong> {{ .Q4 }}</p>
         </div>
-        <div class="mt-2 text-xs text-gray-500">Ditandatangani: {{ .Signature }}</div>
+        <div class="mt-2 text-xs text-gray-500">Tanggal: {{ .Date.Format "2006-01-02 15:04" }}</div>
         <form method="POST" action="/admin/setstatus" class="mt-3 flex gap-2">
           <input type="hidden" name="id" value="{{ .ID }}">
           <select name="status" class="border px-2 py-1 rounded text-sm">
@@ -37,13 +37,19 @@
             <option {{ if eq .Status "accepted" }}selected{{ end }}>accepted</option>
             <option {{ if eq .Status "denied" }}selected{{ end }}>denied</option>
           </select>
-          <button class="px-3 py-1 bg-indigo-600 text-white rounded text-sm">Update</button>
+          <button type="submit" class="px-3 py-1 rounded bg-indigo-500 text-white text-sm">Update Status</button>
         </form>
+        {{ if or .IsForumManagement .IsSuperAdmin }}
+        <form method="POST" action="/admin/delete" class="mt-2">
+          <input type="hidden" name="id" value="{{ .ID }}">
+          <button type="submit" class="px-3 py-1 rounded bg-red-500 text-white text-sm">Hapus Pendaftaran</button>
+        </form>
+        {{ end }}
       </div>
       {{ end }}
     </div>
     {{ else }}
-    <p class="text-gray-600">Belum ada pendaftar.</p>
+    <div class="p-6 text-center text-gray-500">Tidak ada pendaftar baru.</div>
     {{ end }}
   </main>
 </body>
